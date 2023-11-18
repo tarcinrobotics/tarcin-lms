@@ -1,0 +1,71 @@
+<%
+# Copyright (C) 2022 - present Instructure, Inc.
+#
+# This file is part of Canvas.
+#
+# Canvas is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, version 3 of the License.
+#
+# Canvas is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along
+# with this program. If not, see <http://www.gnu.org/licenses/>.
+%>
+
+<script>
+  // shim a Storage object so that localStorage etc
+  // can work without errors in a cross-origin iframe
+  const getStorage = () => {
+    let _data = {}
+    const storage = {
+      getItem(key) {
+        return key in _data ? _data[key] : null
+      },
+      setItem(key, value) {
+        _data[key] = String(value)
+      },
+      removeItem(key) {
+        delete _data[key]
+      },
+      clear() {
+        _data = {}
+      },
+      get length() {
+        return Object.keys(_data).length
+      },
+      key(index) {
+        const keys = Object.keys(_data)
+        return keys[index] || null
+      },
+    }
+  
+    const proxy = {
+      get(target, key) {
+        // allow standard getItem/etc usage
+        if (Object.keys(target).includes(key)) {
+          return Reflect.get(target, key)
+        }
+        // allow using dot notation
+        return target.getItem(key)
+      },
+      set(target, key, value) {
+        target.setItem(key, value)
+        return true
+      },
+      deleteProperty: (target, key) => {
+        target.removeItem(key)
+        return true
+      },
+    }
+
+    return new Proxy(storage, proxy)
+  }
+
+  Object.defineProperty(window, 'localStorage', {value: getStorage()})
+  Object.defineProperty(window, 'sessionStorage', {value: getStorage()})
+</script>
+<% js_bundle(:post_message_forwarding) %>
